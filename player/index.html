@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rádio Peão - Player</title>
+  <style>
+    :root{
+      --bg:#0f0d0a;
+      --card:#1a1511;
+      --accent:#c93a2e;
+      --accent-2:#f2c94c;
+      --text:#f7f3ef;
+      --muted:#b9afa6;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(201,58,46,.25), transparent 60%),
+        radial-gradient(800px 500px at -10% 110%, rgba(242,201,76,.18), transparent 60%),
+        var(--bg);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .player{
+      width:min(720px, 95vw);
+      border-radius:24px;
+      background:linear-gradient(180deg, #201a15, #16120e);
+      box-shadow:
+        0 30px 80px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.06);
+      overflow:hidden;
+    }
+    .header{
+      display:flex;
+      gap:20px;
+      padding:20px;
+      align-items:center;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.04), transparent),
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80" viewBox="0 0 160 80" fill="none"><path d="M5 60 L20 40 L40 50 L65 30 L80 34 L105 15 L120 20 L150 8" stroke="%23b2824f" stroke-opacity=".08" stroke-width="4" stroke-linecap="round"/></svg>') right center / auto no-repeat;
+    }
+    .art{
+      width:84px;height:84px;border-radius:16px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.14), transparent 40%),
+        #2a231e;
+      display:grid; place-items:center;
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .art svg{width:56px;height:56px;opacity:.9}
+    .title-wrap{flex:1; min-width:0}
+    .brand{font-size:14px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+    h1{
+      font-size:22px; margin:4px 0 2px 0; line-height:1.2; color:var(--text);
+      text-wrap:balance;
+    }
+    .status{
+      font-size:13px; color:var(--muted);
+      display:flex; align-items:center; gap:8px;
+    }
+    .dot{width:8px; height:8px; border-radius:50%; background: #8a8a8a}
+    .dot.live{ background: var(--accent); box-shadow:0 0 0 6px rgba(201,58,46,.18) }
+    .controls{
+      padding:20px;
+      display:grid;
+      grid-template-columns: auto 1fr auto;
+      align-items:center;
+      gap:16px;
+    }
+    .play{
+      width:64px; height:64px; border-radius:50%;
+      border:none; cursor:pointer;
+      display:grid; place-items:center;
+      background: radial-gradient(120% 120% at 30% 20%, rgba(255,255,255,.18), rgba(255,255,255,.02)),
+                  linear-gradient(180deg, #eb4c3f, #b22b21);
+      box-shadow: 0 10px 30px rgba(201,58,46,.35), inset 0 1px 0 rgba(255,255,255,.25);
+      transition: transform .08s ease;
+    }
+    .play:active{ transform: scale(.98) }
+    .play svg{ width:28px; height:28px; fill:#fff }
+    .bar-wrap{
+      display:flex; align-items:center; gap:12px; width:100%;
+    }
+    .time{ font-variant-numeric: tabular-nums; font-size:13px; color:var(--muted) }
+    .vol{
+      display:flex; align-items:center; gap:10px;
+    }
+    .icon{ width:22px; height:22px; fill:#e7e1da; opacity:.9 }
+    input[type="range"]{
+      -webkit-appearance:none; appearance:none;
+      width:140px; height:6px; border-radius:999px;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      outline:none; cursor:pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance:none; appearance:none;
+      width:18px; height:18px; border-radius:50%;
+      background:#fff; border:2px solid #1f1914; box-shadow:0 2px 6px rgba(0,0,0,.35);
+      margin-top:-6px;
+    }
+    .footer{
+      padding:14px 20px;
+      display:flex; justify-content:space-between; align-items:center;
+      border-top:1px solid rgba(255,255,255,.06);
+      color:var(--muted); font-size:12px;
+    }
+    .vu{
+      display:flex; gap:3px; align-items:flex-end; height:16px;
+    }
+    .vu span{
+      width:3px; background:linear-gradient(180deg, var(--accent-2), var(--accent));
+      height:4px; border-radius:2px; opacity:.9;
+      transform-origin: bottom;
+      animation: none;
+    }
+    .vu.playing span{
+      animation: vu .6s ease-in-out infinite alternate;
+    }
+    .vu.playing span:nth-child(2){ animation-delay: .08s }
+    .vu.playing span:nth-child(3){ animation-delay: .12s }
+    .vu.playing span:nth-child(4){ animation-delay: .18s }
+    .vu.playing span:nth-child(5){ animation-delay: .22s }
+    @keyframes vu{
+      from{ height:4px }
+      to{ height:16px }
+    }
+    @media (max-width:560px){
+      .controls{ grid-template-columns: auto 1fr; gap:14px }
+      .vol{ grid-column: 1 / -1; justify-self:end }
+      input[type="range"]{ width:120px }
+      .header{ padding:16px }
+      .art{ width:72px; height:72px }
+      h1{ font-size:18px }
+    }
+  </style>
+</head>
+<body>
+  <main class="player" role="region" aria-label="Player de Áudio">
+    <header class="header">
+      <div class="art" aria-hidden="true">
+        <!-- Ícone chapéu country -->
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#f1e6d8" d="M48.3 28.6c-2.1-9.4-5.8-14.6-10.2-14.6-2.1 0-4.4 1.2-6.4 3.5-2-2.3-4.3-3.5-6.4-3.5-4.4 0-8.1 5.2-10.2 14.6-3.3.8-9.6 3-9.6 6.7 0 4.3 11.1 7.7 24.8 7.7s24.8-3.4 24.8-7.7c0-3.7-6.3-5.9-9.6-6.7zM32 20.2c1.8-2 3.7-3 5.3-3 3.2 0 6 3.9 7.8 11.1-3.4-.5-8-1-13.1-1s-9.7.5-13.1 1c1.8-7.2 4.6-11.1 7.8-11.1 1.6 0 3.5 1 5.3 3z"/>
+        </svg>
+      </div>
+      <div class="title-wrap">
+        <div class="brand">Rádio Peão • Barretos Country</div>
+        <h1>Ao Vivo</h1>
+        <div class="status"><span id="statusDot" class="dot"></span><span id="statusText">carregando…</span></div>
+      </div>
+    </header>
+
+    <section class="controls">
+      <button id="playBtn" class="play" aria-label="Tocar">
+        <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7-11-7z"/></svg>
+      </button>
+
+      <div class="bar-wrap">
+        <div class="vu" id="vu">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="time" id="time">ao vivo</div>
+      </div>
+
+      <div class="vol">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10v4h4l5 5V5L7 10H3zM16.5 12c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03zM14 3.23v2.06c2.89 1 5 3.77 5 6.71s-2.11 5.71-5 6.71v2.06c4.01-1.07 7-4.71 7-8.77s-2.99-7.7-7-8.77z"/></svg>
+        <input id="vol" type="range" min="0" max="1" step="0.01" />
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div>Stream: <strong>ao vivo</strong></div>
+      <div id="recon">Reconexões: 0</div>
+    </footer>
+
+    <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+  </main>
+
+  <script>
+    const STREAM_URL = "https://stream.zeno.fm/p0er2g9nex6vv"; // seu link direto
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const playIcon = document.getElementById('playIcon');
+    const statusText = document.getElementById('statusText');
+    const statusDot = document.getElementById('statusDot');
+    const vu = document.getElementById('vu');
+    const vol = document.getElementById('vol');
+    const recon = document.getElementById('recon');
+    let reconCount = 0;
+    let backoff = 1500;
+
+    // Estado inicial
+    audio.src = STREAM_URL;
+    audio.volume = Number(localStorage.getItem('radio_volume') ?? 0.8);
+    vol.value = audio.volume.toFixed(2);
+
+    function setStatus(text, live=false){
+      statusText.textContent = text;
+      statusDot.className = 'dot' + (live ? ' live' : '');
+    }
+
+    function setPlayingUI(playing){
+      if(playing){
+        playIcon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+        playBtn.setAttribute('aria-label','Pausar');
+        vu.classList.add('playing');
+      }else{
+        playIcon.innerHTML = '<path d="M8 5v14l11-7-11-7z"/>';
+        playBtn.setAttribute('aria-label','Tocar');
+        vu.classList.remove('playing');
+      }
+    }
+
+    async function play(){
+      try{
+        setStatus('conectando…');
+        await audio.play();
+        setStatus('ao vivo', true);
+        setPlayingUI(true);
+        backoff = 1500; // reset backoff
+      }catch(e){
+        setStatus('toque em Play para iniciar');
+        setPlayingUI(false);
+        console.debug('Autoplay bloqueado ou erro ao tocar:', e);
+      }
+    }
+
+    function pause(){
+      audio.pause();
+      setStatus('pausado');
+      setPlayingUI(false);
+    }
+
+    function restart(){
+      reconCount++;
+      recon.textContent = 'Reconexões: ' + reconCount;
+      audio.pause();
+      const t = audio.currentTime; // só para forçar refresh do src
+      audio.src = STREAM_URL + (STREAM_URL.includes('?') ? '&' : '?') + 'ts=' + Date.now();
+      audio.currentTime = t;
+      audio.load();
+      play();
+    }
+
+    // Eventos
+    playBtn.addEventListener('click', () => {
+      if(audio.paused) play(); else pause();
+    });
+
+    audio.addEventListener('playing', () => setStatus('ao vivo', true));
+    audio.addEventListener('pause', () => setStatus('pausado'));
+    audio.addEventListener('waiting', () => setStatus('recarregando…'));
+    audio.addEventListener('stalled', () => { setStatus('instável… tentando novamente'); setTimeout(restart, 800); });
+    audio.addEventListener('error', () => {
+      setStatus('erro no stream, tentando novamente…');
+      setTimeout(restart, backoff);
+      backoff = Math.min(backoff * 1.6, 15000);
+    });
+
+    // Reconectar ao perder som (alguns streams “congelam”)
+    let lastTime = 0;
+    setInterval(() => {
+      if(!audio.paused){
+        if (Math.abs(audio.currentTime - lastTime) < .1) {
+          // sem progresso
+          restart();
+        }
+        lastTime = audio.currentTime;
+      }
+    }, 15000);
+
+    // Volume
+    vol.addEventListener('input', e => {
+      audio.volume = Number(e.target.value);
+      localStorage.setItem('radio_volume', audio.volume.toString());
+    });
+
+    // Tentar iniciar se permitido
+    document.addEventListener('visibilitychange', () => {
+      if(document.visibilityState === 'visible' && audio.paused){
+        // não auto-play no iOS; mantemos aguardando interação
+      }
+    });
+
+    // Mensagem inicial
+    setStatus('toque em Play para iniciar');
+  </script>
+</body>
+</html>
